@@ -14,6 +14,9 @@ namespace Microsoft.Diagnostics.ExtensionCommands
     [Command(Name = "threadpool", Aliases = new[] { "ThreadPool" }, Help = "Displays info about the runtime thread pool.")]
     public sealed class ThreadPoolCommand : ClrRuntimeCommandBase
     {
+        [ServiceImport]
+        public IThread CurrentThread { get; set; }
+
         [Option(Name = "-ti", Help = "Print the hill climbing log.", Aliases = new string[] { "-hc" })]
         public bool PrintHillClimbingLog { get; set; }
 
@@ -22,6 +25,41 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 
         public override void Invoke()
         {
+            Console.WriteLine($"OS Thread Id: 0x{CurrentThread.ThreadId:x} ({CurrentThread.ThreadIndex})");
+
+            ClrType threadBlockingInfoType = Runtime.BaseClassLibrary.GetTypeByName("System.Threading.ThreadBlockingInfo");
+            if (threadBlockingInfoType is null)
+            {
+                Console.WriteLine("Failed to obtain the System.Threading.ThreadBlockingInfo type.");
+            }
+            else
+            {
+                Console.WriteLine($"TLS fields: {threadBlockingInfoType.ThreadStaticFields.Length}");
+                foreach (ClrThreadStaticField field in threadBlockingInfoType.ThreadStaticFields)
+                {
+                    Console.WriteLine($"    {field.Name}");
+                }
+            }
+
+            ClrThreadStaticField first = threadBlockingInfoType.ThreadStaticFields.Where(f => f.Name == "t_first").FirstOrDefault();
+            if (first is not null)
+            {
+                ClrThread clrThread = Runtime.Threads.Where(t => t.OSThreadId == CurrentThread.ThreadId).FirstOrDefault();
+                if (clrThread is not null)
+                {
+                    WriteLine($"    {first.Name}: {first.Read<nuint>(clrThread):x16}");
+                }
+                else
+                {
+                    Console.WriteLine("Failed to obtain the current thread.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Failed to obtain the t_first field.");
+            }
+
+            /*
             // Runtime.ThreadPool shouldn't be null unless there was a problem with the dump.
             ClrThreadPool threadPool = Runtime.ThreadPool;
             if (threadPool is null)
@@ -81,6 +119,8 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 In .NET 7, the UsePortableThreadPoolForIO field exists and is true by default, in which case the IO completion thread pool is not used, but that can be changed through config
                 In .NET 8, the UsePortableThreadPoolForIO field doesn't exist and the IO completion thread pool doesn't exist. However, in .NET 8, GetThreadpoolData returns E_NOTIMPL.
                 */
+
+                /*
                 bool usingIOCompletionThreadPool = threadPool.HasLegacyData && (usePortableIOField is null || !usePortableIOField.Read<bool>(usePortableIOField.Type.Module.AppDomain));
                 if (usingIOCompletionThreadPool)
                 {
@@ -131,6 +171,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
             {
                 DumpWorkItems();
             }
+            */
         }
 
         private void DumpWorkItems()
