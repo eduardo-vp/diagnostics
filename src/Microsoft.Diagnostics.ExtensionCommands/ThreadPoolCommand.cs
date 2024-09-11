@@ -30,14 +30,14 @@ namespace Microsoft.Diagnostics.ExtensionCommands
             ClrType threadBlockingInfoType = Runtime.BaseClassLibrary.GetTypeByName("System.Threading.ThreadBlockingInfo");
             if (threadBlockingInfoType is null)
             {
-                Console.WriteLine("Failed to obtain the System.Threading.ThreadBlockingInfo type.");
+                WriteLineError("Failed to obtain the System.Threading.ThreadBlockingInfo type.");
             }
             else
             {
-                Console.WriteLine($"TLS fields: {threadBlockingInfoType.ThreadStaticFields.Length}");
+                WriteLine($"TLS fields: {threadBlockingInfoType.ThreadStaticFields.Length}");
                 foreach (ClrThreadStaticField field in threadBlockingInfoType.ThreadStaticFields)
                 {
-                    Console.WriteLine($"    {field.Name}");
+                    WriteLine($"    {field.Name}");
                 }
             }
 
@@ -51,12 +51,12 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 }
                 else
                 {
-                    Console.WriteLine("Failed to obtain the current thread.");
+                    WriteLine("Failed to obtain the current thread.");
                 }
             }
             else
             {
-                Console.WriteLine("Failed to obtain the t_first field.");
+                WriteLine("Failed to obtain the t_first field.");
             }
 
             /*
